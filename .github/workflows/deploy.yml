@@ -1,9 +1,18 @@
 name: Deploy schema
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
+    inputs:
+      targets:
+        description: Comma-separated database targets
+        required: true
+      file-pattern:
+        description: Glob of the SQL files to deploy
+        default: schema/*.sql
+      declarative:
+        description: Deploy the files as a desired-state schema (SDL)
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -25,13 +34,16 @@ jobs:
         env:
           BYTEBASE_SERVICE_ACCOUNT: ${{ secrets.BYTEBASE_SERVICE_ACCOUNT }}
           BYTEBASE_SERVICE_ACCOUNT_SECRET: ${{ secrets.BYTEBASE_SERVICE_ACCOUNT_SECRET }}
+          TARGETS: ${{ inputs.targets }}
+          FILE_PATTERN: ${{ inputs.file-pattern }}
+          DECLARATIVE: ${{ inputs.declarative }}
         run: |
           "$RUNNER_TEMP/bytebase-action" rollout \
             --url "${{ vars.BYTEBASE_URL }}" \
             --project projects/gitops-sdl \
-            --targets "projects/gitops-sdl/instances/sample-812b55acd3393186/databases/tenant_01,projects/gitops-sdl/instances/sample-812b55acd3393186/databases/tenant_02,projects/gitops-sdl/instances/sample-812b55acd3393186/databases/tenant_03,projects/gitops-sdl/instances/sample-812b55acd3393186/databases/tenant_04,projects/gitops-sdl/instances/sample-812b55acd3393186/databases/tenant_05,projects/gitops-sdl/instances/sample-812b55acd3393186/databases/tenant_06,projects/gitops-sdl/instances/sample-812b55acd3393186/databases/tenant_07,projects/gitops-sdl/instances/sample-812b55acd3393186/databases/tenant_08,projects/gitops-sdl/instances/sample-812b55acd3393186/databases/tenant_09" \
-            --file-pattern "schema/*.sql" \
-            --declarative \
+            --targets "$TARGETS" \
+            --file-pattern "$FILE_PATTERN" \
+            --declarative="$DECLARATIVE" \
             --target-stage environments/test \
             --output bytebase-rollout.json
 
