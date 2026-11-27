@@ -2,6 +2,7 @@ CREATE TABLE public.employee (
     id integer NOT NULL,
     name text NOT NULL,
     job_title text,
+    email text NOT NULL,
     CONSTRAINT employee_pkey PRIMARY KEY (id)
 );
 
