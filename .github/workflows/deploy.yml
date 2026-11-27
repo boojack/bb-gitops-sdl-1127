@@ -1,0 +1,42 @@
+name: Deploy schema
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download the bytebase-action build under test
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download action-dev --repo "$GITHUB_REPOSITORY" --pattern bytebase-action --dir "$RUNNER_TEMP"
+          chmod +x "$RUNNER_TEMP/bytebase-action"
+
+      - name: Deploy to test
+        env:
+          BYTEBASE_SERVICE_ACCOUNT: ${{ secrets.BYTEBASE_SERVICE_ACCOUNT }}
+          BYTEBASE_SERVICE_ACCOUNT_SECRET: ${{ secrets.BYTEBASE_SERVICE_ACCOUNT_SECRET }}
+        run: |
+          "$RUNNER_TEMP/bytebase-action" rollout \
+            --url "${{ vars.BYTEBASE_URL }}" \
+            --project projects/gitops-sdl \
+            --targets "projects/gitops-sdl/instances/sample-812b55acd3393186/databases/tenant_01,projects/gitops-sdl/instances/sample-812b55acd3393186/databases/tenant_02,projects/gitops-sdl/instances/sample-812b55acd3393186/databases/tenant_03,projects/gitops-sdl/instances/sample-812b55acd3393186/databases/tenant_04,projects/gitops-sdl/instances/sample-812b55acd3393186/databases/tenant_05,projects/gitops-sdl/instances/sample-812b55acd3393186/databases/tenant_06,projects/gitops-sdl/instances/sample-812b55acd3393186/databases/tenant_07,projects/gitops-sdl/instances/sample-812b55acd3393186/databases/tenant_08,projects/gitops-sdl/instances/sample-812b55acd3393186/databases/tenant_09" \
+            --file-pattern "schema/*.sql" \
+            --declarative \
+            --target-stage environments/test \
+            --output bytebase-rollout.json
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bytebase-rollout
+          path: bytebase-rollout.json
